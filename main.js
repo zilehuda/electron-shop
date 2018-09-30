@@ -2,7 +2,7 @@ const electron = require('electron');
 const url = require('url');
 const path = require('path');
 
-const {app, BrowserWindow, Menu} = electron;
+const {app, BrowserWindow, Menu, ipcMain} = electron;
 
 let mainWindow;
 let addWindow;
@@ -28,6 +28,17 @@ app.on('ready', function(){
     //insert menu
     Menu.setApplicationMenu(mainMenu);
     mainWindow.show();
+
+
+    mainWindow.on('closed', function(){
+        app.quit();
+    });
+});
+
+ipcMain.on('item:add', function(e, item){
+    console.log(item);
+    mainWindow.webContents.send('item:add',item);
+   // addWindow.close();
 });
 
 //handle create Add Window
@@ -36,10 +47,10 @@ function createAddWindow()
 {
     addWindow = new BrowserWindow({
         width: 500,
-        height: 500,
+        height: 300,
         title: "Add Shopping item",
         backgroundColor: '#2e2c29',
-        resizable: false
+       // resizable: false
     });
     //load html into window
 
@@ -48,7 +59,14 @@ function createAddWindow()
         protocol: 'file:',
         slashes: true
     }));
+
+    //garbage collection
+    addWindow.on('closed',function(){
+        addWindow = null;
+    });
 }
+
+
 
 //create menu item
 const mainMenuTemplate = [
@@ -64,7 +82,7 @@ const mainMenuTemplate = [
             },
             {
                 label:'Quit',
-                accelerator: 'a',
+                accelerator: 'Ctrl+Q',
                 click(){
                     app.quit();
                 }
@@ -80,3 +98,29 @@ const mainMenuTemplate = [
         click: () => { console.log('time to print stuff') }
       }
 ];
+
+//if mac add empty object to menu
+
+if(process.platform == 'darwin'){
+    mainMenuTemplate.unshift({});
+}
+
+//add developer tool item if not in production
+
+if(process.env.NODE_ENV !== 'production')
+{
+    mainMenuTemplate.push({
+        label:'developer tools',
+        submenu:[
+            {
+                label:'Toggle DevTools',
+                click(item, focusedWindow){
+                    focusedWindow.toggleDevTools();
+                }
+            },
+            {
+                role:'reload'
+            }
+        ]
+    });
+}
